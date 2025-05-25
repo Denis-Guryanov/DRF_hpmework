@@ -16,6 +16,7 @@ black = "^25.1.0"
 isort = "^6.0.1"
 django-phonenumber-field = {extras = ["phonenumberslite"], version = "^8.1.0"}
 django-countries = "^7.6.1"
+django-filter = "^25.1"
 
 
 [build-system]
