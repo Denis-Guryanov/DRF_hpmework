@@ -4,6 +4,7 @@ version = "0.1.0"
 description = ""
 authors = ["Denis Guryanov <guryanov19962010@yandex.ru>"]
 readme = "README.md"
+package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.13"
@@ -16,7 +17,10 @@ black = "^25.1.0"
 isort = "^6.0.1"
 django-phonenumber-field = {extras = ["phonenumberslite"], version = "^8.1.0"}
 django-countries = "^7.6.1"
-
+django-filter = "^25.1"
+psycopg2-binary = "^2.9.10"
+djangorestframework-simplejwt = "^5.5.0"
+rest-framework-simplejwt = "^0.0.2"
 
 [build-system]
 requires = ["poetry-core"]
