@@ -1,10 +1,22 @@
-from django.contrib.auth import get_user_model
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
+from django.conf import settings
 from phonenumber_field.modelfields import PhoneNumberField
 
-from courses.models import Course, Lesson
+class UserManager(BaseUserManager):
+    def create_user(self, email, password=None, **extra_fields):
+        if not email:
+            raise ValueError('The Email field must be set')
+        email = self.normalize_email(email)
+        user = self.model(email=email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
 
+    def create_superuser(self, email, password=None, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        return self.create_user(email, password, **extra_fields)
 
 class User(AbstractUser):
     username = None
@@ -18,9 +30,10 @@ class User(AbstractUser):
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
 
+    objects = UserManager()
+
     def __str__(self):
         return self.email
-
 
 class Payment(models.Model):
     PAYMENT_METHOD_CHOICES = [
@@ -29,7 +42,7 @@ class Payment(models.Model):
     ]
 
     user = models.ForeignKey(
-        get_user_model(),
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="payments",
         verbose_name="Пользователь"
@@ -39,7 +52,7 @@ class Payment(models.Model):
         verbose_name="Дата оплаты"
     )
     paid_course = models.ForeignKey(
-        Course,
+        'courses.Course',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -47,7 +60,7 @@ class Payment(models.Model):
         verbose_name="Оплаченный курс"
     )
     paid_lesson = models.ForeignKey(
-        Lesson,
+        'courses.Lesson',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -70,4 +83,3 @@ class Payment(models.Model):
         verbose_name = 'Платеж'
         verbose_name_plural = 'Платежи'
         ordering = ['-payment_date']
-
