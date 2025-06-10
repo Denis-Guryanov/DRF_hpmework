@@ -83,3 +83,21 @@ class Payment(models.Model):
         verbose_name = 'Платеж'
         verbose_name_plural = 'Платежи'
         ordering = ['-payment_date']
+
+
+class Subscription(models.Model):
+    user =models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='subscriptions'
+    )
+    course = models.ForeignKey(
+        'courses.Course',
+        on_delete=models.CASCADE,
+        related_name='subscriptions'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+    class Meta:
+        unique_together = ('user', 'course')

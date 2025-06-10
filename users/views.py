@@ -1,12 +1,17 @@
+from pyexpat.errors import messages
+
+from django.shortcuts import get_object_or_404
 from django_filters import rest_framework as filters
 from rest_framework import viewsets, status, generics
+from rest_framework.views import APIView
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 
+from courses.models import Course
 from .filters import PaymentFilter
-from .models import Payment
+from .models import Payment, Subscription
 from .serializers import (
     UserSerializer,
     PaymentSerializer,
@@ -66,3 +71,24 @@ class UserViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
         return super().update(request, *args, **kwargs)
+
+class SubscriptionAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        course_id = request.data.get('course_id')
+        course = get_object_or_404(Course, id=course_id)
+
+        # Проверяем существование подписки
+        subscription_exists = Subscription.objects.filter(
+            user=user,
+            course=course
+        ).exists()
+
+        if subscription_exists:
+            Subscription.objects.filter(user=user, course=course).delete()
+            return Response({"message": "Подписка удалена"}, status=status.HTTP_200_OK)
+        else:
+            Subscription.objects.create(user=user, course=course)
+            return Response({"message": "Подписка добавлена"}, status=status.HTTP_201_CREATED)
