@@ -5,6 +5,11 @@ class LessonSerializer(serializers.ModelSerializer):
     class Meta:
         model = Lesson
         fields = '__all__'
+        read_only_fields = ['owner']
+
+    def create(self, validated_data):
+        validated_data['owner'] = self.context['request'].user
+        return super().create(validated_data)
 
 class CourseSerializer(serializers.ModelSerializer):
     lessons = LessonSerializer(many=True, read_only=True, source='lessons.all')
@@ -17,6 +22,11 @@ class CourseSerializer(serializers.ModelSerializer):
             'description',
             'lessons'
         ]
+        read_only_fields = ['owner']
+
+        def create(self, validated_data):
+            validated_data['owner'] = self.context['request'].user
+            return super().create(validated_data)
 
 
 class CourseDetailSerializer(serializers.ModelSerializer):
