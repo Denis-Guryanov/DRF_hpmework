@@ -1,5 +1,6 @@
 from pyexpat.errors import messages
 
+import stripe
 from django.shortcuts import get_object_or_404
 from django_filters import rest_framework as filters
 from rest_framework import viewsets, status, generics
@@ -20,6 +21,7 @@ from .serializers import (
     PrivateUserProfileSerializer,
     UserRegistrationSerializer
 )
+from .services import create_product, create_price, create_checkout_session
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -30,6 +32,60 @@ class PaymentViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.DjangoFilterBackend, OrderingFilter]
     filterset_class = PaymentFilter
     ordering_fields = ['payment_date']
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        payment = serializer.save()
+
+        if payment.payment_method == 'transfer' and (payment.paid_course or payment.paid_lesson):
+            try:
+                # Определение продукта
+                product_name = payment.paid_course.name if payment.paid_course else payment.paid_lesson.name
+
+                # Создание в Stripe
+                product = create_product(product_name)
+                price = create_price(product.id, payment.amount)
+                session = create_checkout_session(price.id)
+
+                # Сохранение идентификаторов
+                payment.stripe_product_id = product.id
+                payment.stripe_price_id = price.id
+                payment.stripe_session_id = session.id
+                payment.save()
+
+                # Возврат ссылки на оплату
+                return Response({
+                    'payment_id': payment.id,
+                    'payment_url': session.url
+                }, status=status.HTTP_201_CREATED)
+
+            except Exception as e:
+                payment.delete()
+                return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return super().create(request, *args, **kwargs)
+
+
+class PaymentStatusAPIView(APIView):
+    """
+    Проверка статуса платежа в Stripe.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        payment = get_object_or_404(Payment, pk=pk, user=request.user)
+
+        if not payment.stripe_session_id:
+            return Response({'error': 'Stripe session not found'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            session = stripe.checkout.Session.retrieve(payment.stripe_session_id)
+            payment.stripe_payment_status = session.payment_status
+            payment.save()
+            return Response({'status': session.payment_status})
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 class UserRegistrationAPIView(generics.CreateAPIView):
     serializer_class = UserRegistrationSerializer

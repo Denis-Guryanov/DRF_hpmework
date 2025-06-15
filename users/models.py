@@ -75,6 +75,10 @@ class Payment(models.Model):
         choices=PAYMENT_METHOD_CHOICES,
         verbose_name='Способ оплаты'
     )
+    stripe_product_id = models.CharField(max_length=100, blank=True, null=True)
+    stripe_price_id = models.CharField(max_length=100, blank=True, null=True)
+    stripe_session_id = models.CharField(max_length=100, blank=True, null=True)
+    stripe_payment_status = models.CharField(max_length=20, blank=True, null=True, default='unpaid')
 
     def __str__(self):
         return f'{self.user.email} - {self.payment_date}'
